@@ -4,16 +4,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
+using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNet.StaticFiles;
+using Microsoft.Data.Entity;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNet.StaticFiles;
+using Microsoft.Extensions.PlatformAbstractions;
+using kz1.Models;
 
 namespace kz1
 {
     public class Startup
     {
-        public Startup(IHostingEnvironment env)
+        public Startup(IHostingEnvironment env, IApplicationEnvironment appEnv)
         {
             // Set up configuration sources.
             var builder = new ConfigurationBuilder()
@@ -27,6 +32,8 @@ namespace kz1
 
             builder.AddEnvironmentVariables();
             Configuration = builder.Build().ReloadOnChanged("appsettings.json");
+
+            Configuration["Data:MyConn:ConnectionString"] = $@"Data Source={appEnv.ApplicationBasePath}/c3.db";
         }
 
         public IConfigurationRoot Configuration { get; set; }
@@ -36,7 +43,14 @@ namespace kz1
         {
             // Add framework services.
             services.AddApplicationInsightsTelemetry(Configuration);
+            services.AddEntityFramework()
+                .AddSqlite()
+                .AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlite(Configuration["Data:MyConn:ConnectionString"]));
 
+            services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
             services.AddMvc();
         }
 
